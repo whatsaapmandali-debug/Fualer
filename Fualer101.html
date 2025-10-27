@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Fualer</title>
+
+    <!-- Leaflet for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Poppins',sans-serif; background:#f4f7fa; min-height:100vh; }
+        .splash { position:fixed; top:0; left:0; right:0; bottom:0; background:#007bff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; animation:fadeOut 0.6s forwards 1.8s; }
+        .splash h1 { color:white; margin-top:20px; font-size:32px; font-weight:700; letter-spacing:2px; }
+        @keyframes fadeOut { to{opacity:0; visibility:hidden} }
+
+        .container { width:90%; max-width:400px; margin:20px auto; padding:24px; background:white; border-radius:20px; box-shadow:0 12px 30px rgba(0,0,0,0.12); }
+        label { display:block; margin:16px 0 8px; font-weight:600; color:#007bff; font-size:15px; }
+        input { width:100%; padding:14px; border:2px solid #e0e0e0; border-radius:12px; font-size:16px; transition:0.3s; }
+        input:focus { border-color:#007bff; outline:none; }
+
+        button { width:100%; padding:16px; margin:12px 0; border:none; border-radius:16px; font-size:18px; font-weight:700; color:white; cursor:pointer; transition:0.3s; }
+        .btn-primary { background:#28a745; box-shadow:0 4px 10px rgba(40,167,69,0.3); }
+        .btn-primary:hover { background:#218838; transform:translateY(-2px); }
+        .btn-secondary { background:#6c757d; }
+        #stop-btn { background:#dc3545; display:none; }
+        #resume-btn { background:#28a745; display:none; }
+        #reset-btn { background:#ffc107; color:#212529; }
+
+        .odometer { font-family:'Courier New',monospace; font-size:48px; text-align:center; background:#1a1a1a; color:#0f0; padding:20px; border-radius:16px; letter-spacing:6px; margin:20px 0; box-shadow:0 4px 15px rgba(0,0,0,0.2); }
+        .status { text-align:center; padding:12px; border-radius:12px; margin:10px 0; font-weight:600; font-size:16px; }
+        .running { background:#d4edda; color:#155724; }
+        .stopped { background:#f8d7da; color:#721c24; }
+
+        #result-box { background:linear-gradient(135deg, #e8f5e8, #d4edda); padding:22px; border-radius:16px; margin:15px 0; border:2px solid #b8e0c1; }
+        #result-box h2 { margin:8px 0; font-size:16px; color:#155724; font-weight:600; }
+
+        .hidden { display:none !important; }
+
+        header { background:#007bff; color:white; text-align:center; padding:18px; font-size:24px; font-weight:700; position:sticky; top:0; z-index:101; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+        #menu-icon { position:absolute; left:18px; font-size:26px; cursor:pointer; }
+        #notification-icon { position:absolute; right:18px; font-size:24px; cursor:pointer; color:#fff; }
+        #notification-icon i { position:relative; }
+        #notification-icon .badge { position:absolute; top:-8px; right:-8px; background:#ff3b30; color:white; font-size:10px; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+
+        #sidebar { position:fixed; top:0; left:-300px; width:300px; height:100%; background:white; box-shadow:2px 0 15px rgba(0,0,0,0.15); transition:left 0.3s ease; z-index:1000; padding:20px; overflow-y:auto; }
+        #sidebar.active { left:0; }
+        #close-sidebar { position:absolute; top:20px; right:20px; font-size:26px; cursor:pointer; color:#007bff; }
+
+        .profile-pic { width:100px; height:100px; border-radius:50%; overflow:hidden; margin:20px auto; cursor:pointer; border:4px solid #007bff; box-shadow:0 4px 15px rgba(0,123,255,0.3); position:relative; }
+        .profile-pic img { width:100%; height:100%; object-fit:cover; }
+        .profile-pic i { position:absolute; bottom:5px; right:5px; background:#007bff; color:white; padding:8px; border-radius:50%; font-size:16px; }
+
+        .profile-info { text-align:center; margin-bottom:20px; }
+        .profile-info h2 { margin:10px 0 5px; font-size:20px; font-weight:600; color:#007bff; }
+        .profile-info p { color:#555; font-size:15px; font-weight:500; }
+
+        .menu-list { list-style:none; margin-top:20px; }
+        .menu-list li { padding:16px; border-bottom:1px solid #eee; cursor:pointer; display:flex; align-items:center; font-size:16px; }
+        .menu-list li i { margin-right:12px; color:#007bff; font-size:18px; }
+
+        #subscribe-btn, #subscribe-btn2 { background:linear-gradient(135deg, #ff6b35, #f7931e); color:white; font-weight:700; box-shadow:0 4px 15px rgba(255,107,53,0.4); }
+        #subscribe-btn:hover, #subscribe-btn2:hover { transform:translateY(-2px); }
+
+        #logout-btn, #logout-btn2 { background:#dc3545; box-shadow:0 4px 10px rgba(220,53,69,0.3); }
+        #logout-btn:hover, #logout-btn2:hover { background:#c82333; }
+
+        #bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#007bff; display:flex; justify-content:space-around; z-index:999; box-shadow:0 -2px 10px rgba(0,0,0,0.1); }
+        .tab { padding:14px; color:white; cursor:pointer; text-align:center; flex:1; transition:all 0.3s; display:flex; flex-direction:column; align-items:center; font-size:13px; font-weight:600; }
+        .tab i { font-size:22px; margin-bottom:4px; }
+        .tab.active { background:#0056b3; border-radius:12px 12px 0 0; }
+
+        .app-section { 
+            transition: opacity 0.3s; 
+            padding-bottom: 90px !important; 
+            min-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        #map { height:300px; margin:20px 0; border-radius:16px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.1); z-index:1; }
+
+        #popup { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#28a745; color:white; padding:20px 30px; border-radius:16px; z-index:200; display:none; text-align:center; font-size:18px; font-weight:600; box-shadow:0 8px 25px rgba(0,0,0,0.2); }
+        #popup.anim { animation:popupAnim 2s forwards; }
+        @keyframes popupAnim { 0% {opacity:0; transform:translate(-50%,-50%) scale(0.8);} 20% {opacity:1; transform:translate(-50%,-50%) scale(1.05);} 80% {opacity:1; transform:translate(-50%,-50%) scale(1);} 100% {opacity:0; transform:translate(-50%,-50%) scale(0.8);} }
+
+        /* Subscription Modal */
+        #subscription-modal .modal-content {
+            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding:30px; border-radius:20px; width:90%; max-width:400px; color:white; text-align:center;
+            box-shadow:0 15px 40px rgba(0,0,0,0.2);
+        }
+        #subscription-modal h3 {
+            font-size:22px; font-weight:700; margin-bottom:25px; text-shadow:0 2px 5px rgba(0,0,0,0.2);
+        }
+        .subscription-plans {
+            display:flex; flex-direction:column; gap:16px; margin-top:20px;
+        }
+        .plan {
+            background:rgba(255,255,255,0.15); padding:20px; border-radius:16px; cursor:pointer; transition:0.3s; border:3px solid transparent;
+            backdrop-filter:blur(10px);
+        }
+        .plan:hover { transform:translateY(-5px); box-shadow:0 8px 20px rgba(0,0,0,0.2); }
+        .plan.active { border-color:#ffd700; background:rgba(255,215,0,0.2); transform:scale(1.05); }
+        .plan h3 { margin:8px 0; color:#ffd700; font-weight:700; font-size:18px; }
+        .plan p { font-size:20px; font-weight:700; margin:0; }
+
+        #payment-gateway { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:300; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px); }
+        #payment-form { background:white; padding:35px; border-radius:20px; width:90%; max-width:400px; box-shadow:0 15px 40px rgba(0,0,0,0.2); }
+        #payment-form h2 { text-align:center; margin-bottom:25px; color:#007bff; font-size:22px; font-weight:700; }
+        .form-group input { border:2px solid #ddd; border-radius:12px; padding:14px; font-size:16px; }
+        #pay-btn { background:linear-gradient(135deg, #28a745, #20c997); font-weight:700; box-shadow:0 4px 15px rgba(40,167,69,0.4); }
+
+        body.sidebar-open { overflow: hidden; }
+    </style>
+</head>
+<body>
+
+    <!-- Splash Screen -->
+    <div class="splash">
+        <h1>Fualer</h1>
+    </div>
+
+    <!-- Popup -->
+    <div id="popup"></div>
+
+    <!-- Login / Signup Page -->
+    <div class="container" id="auth-section">
+        <div id="login-form">
+            <h2 style="text-align:center; color:#007bff; margin-bottom:20px; font-weight:700;">लॉगिन करा</h2>
+            <label>मोबाईल नंबर</label>
+            <input type="tel" id="login-mobile" placeholder="उदा. 9871234560" maxlength="10">
+            <button id="login-btn" class="btn-primary">लॉगिन करा</button>
+            <p style="text-align:center; margin-top:15px;">
+                <a href="#" id="show-signup" style="color:#007bff; text-decoration:none; font-weight:600;">साइन अप करा</a>
+            </p>
+        </div>
+
+        <div id="signup-form" class="hidden">
+            <h2 style="text-align:center; color:#007bff; margin-bottom:20px; font-weight:700;">साइन अप करा</h2>
+            <label>तुमचं नाव</label>
+            <input type="text" id="signup-name" placeholder="उदा. राम शिंदे">
+            <label>गाडी नंबर</label>
+            <input type="text" id="signup-vehicle" placeholder="उदा. MH 04 AB 1234">
+            <label>मोबाईल नंबर</label>
+            <input type="tel" id="signup-mobile" placeholder="उदा. 9871234560" maxlength="10">
+            <button id="signup-btn" class="btn-primary">साइन अप करा</button>
+            <p style="text-align:center; margin-top:15px;">
+                <a href="#" id="show-login" style="color:#007bff; text-decoration:none; font-weight:600;">आधीच अकाउंट आहे? लॉगिन करा</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Payment Gateway -->
+    <div id="payment-gateway" class="hidden">
+        <div id="payment-form">
+            <h2>पेमेंट करा</h2>
+            <div class="form-group">
+                <label>कार्ड नंबर</label>
+                <input type="text" placeholder="1234 5678 9012 3456" maxlength="19">
+            </div>
+            <div class="form-group">
+                <label>कार्डधारकाचे नाव</label>
+                <input type="text" placeholder="राम शिंदे">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>MM/YY</label>
+                    <input type="text" placeholder="12/25" maxlength="5">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>CVV</label>
+                    <input type="text" placeholder="123" maxlength="3">
+                </div>
+            </div>
+            <button id="pay-btn">पेमेंट करा</button>
+            <button class="btn-secondary" style="margin-top:10px;" onclick="closePayment()">रद्द करा</button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="hidden" id="main-app">
+        <header id="user-header">Fualer
+            <div id="menu-icon"><i class="fas fa-bars"></i></div>
+            <div id="notification-icon"><i class="fas fa-bell"></i><span class="badge">!</span></div>
+        </header>
+
+        <!-- Sidebar Menu -->
+        <div id="sidebar">
+            <div id="close-sidebar"><i class="fas fa-arrow-left"></i></div>
+            <div class="profile-pic" onclick="document.getElementById('profile-upload').click()">
+                <img id="profile-img" src="" alt="Profile">
+                <i class="fas fa-camera"></i>
+            </div>
+            <input type="file" id="profile-upload" hidden accept="image/*">
+            <div class="profile-info">
+                <h2 id="profile-name">नाव</h2>
+                <p id="profile-vehicle">गाडी नंबर</p>
+            </div>
+            <ul class="menu-list">
+                <li><i class="fas fa-file-contract"></i> टर्म & कंडिशन</li>
+                <li><i class="fas fa-shield-alt"></i> प्रायव्हसी पॉलिसी</li>
+                <li><i class="fas fa-phone"></i> कॉन्टॅक्ट अस</li>
+            </ul>
+            <button id="subscribe-btn"><i class="fas fa-crown"></i> सबस्क्रिप्शन घ्या</button>
+            <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> लॉगऑऊट</button>
+        </div>
+
+        <!-- Subscription Modal -->
+        <div id="subscription-modal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:300; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+            <div class="modal-content">
+                <h3>सबस्क्रिप्शन निवडा</h3>
+                <div class="subscription-plans">
+                    <div class="plan" data-days="1" data-amount="10">
+                        <h3>1 दिवस</h3>
+                        <p>₹10</p>
+                    </div>
+                    <div class="plan" data-days="30" data-amount="59">
+                        <h3>1 महिना</h3>
+                        <p>₹59</p>
+                    </div>
+                    <div class="plan" data-days="365" data-amount="199">
+                        <h3>1 वर्ष</h3>
+                        <p>₹199</p>
+                    </div>
+                </div>
+                <button class="btn-secondary" style="margin-top:25px; background:#fff; color:#667eea;" onclick="closeSubscriptionModal()">रद्द करा</button>
+            </div>
+        </div>
+
+        <!-- App Content -->
+        <div id="home-section" class="app-section container">
+            <div id="input-section">
+                <label>पेट्रोलचा भाव (₹/लिटर)</label>
+                <input type="number" id="price" step="0.01" placeholder="105">
+                <label>गाडीत टाकलेले पैसे (₹)</label>
+                <input type="number" id="amount" step="0.01" placeholder="120">
+                <label>गाडी किती किलोमीटर चालली आहे?</label>
+                <input type="number" id="initial_driven" step="0.1" placeholder="0" value="0">
+                <label>मायलेज (किमी/लिटर)</label>
+                <input type="number" id="mileage" step="0.1" placeholder="42">
+                <label>CREATE YOUR RIDE</label>
+                <div style="display:flex; justify-content:space-around; margin:15px 0;">
+                    <label><input type="radio" name="createRide" value="yes"> YES</label>
+                    <label><input type="radio" name="createRide" value="no" checked> NO</label>
+                </div>
+                <button id="setup-btn" class="btn-primary" style="font-size:20px; padding:18px; box-shadow:0 6px 15px rgba(40,167,69,0.4);">
+                    GPS तात्काळ सुरू करा
+                </button>
+            </div>
+        </div>
+
+        <!-- Your Ride Section -->
+        <div id="your-ride-section" class="app-section container hidden">
+            <div id="running-section">
+                <div class="odometer" id="odometer">00000.0</div>
+                <div class="status stopped" id="status">प्रतीक्षा...</div>
+
+                <div id="result-box">
+                    <h2 id="filled-petrol">टाकलेले: ₹0 (0 L)</h2>
+                    <h2 id="used-petrol">वापरलेले: ₹0 (0 L)</h2>
+                    <h2 id="remaining-petrol"><strong>शिल्लक: ₹0 (0 L)</strong></h2>
+                    <h2 id="remaining-km"><strong>अजून: 0 किमी</strong></h2>
+                    <h2 id="current-speed">स्पीड: 0 किमी/तास</h2>
+                    <h2 id="driven-km">गाडी चाललेले: 0.0 किमी</h2>
+                </div>
+
+                <div id="map" class="hidden"></div>
+
+                <button id="stop-btn">थांबवा</button>
+                <button id="resume-btn">Ride सुरु करा</button>
+                <button id="reset-btn">रीसेट</button>
+            </div>
+        </div>
+
+        <div id="history-section" class="app-section container hidden"></div>
+        <div id="profile-section" class="app-section container hidden">
+            <div class="profile-pic" onclick="document.getElementById('profile-upload2').click()">
+                <img id="profile-img2" src="" alt="Profile">
+                <i class="fas fa-camera"></i>
+            </div>
+            <input type="file" id="profile-upload2" hidden accept="image/*">
+            <div class="profile-info">
+                <h2 id="profile-name2">नाव</h2>
+                <p id="profile-vehicle2">गाडी नंबर</p>
+            </div>
+            <ul class="menu-list">
+                <li><i class="fas fa-file-contract"></i> टर्म & कंडिशन</li>
+                <li><i class="fas fa-shield-alt"></i> प्रायव्हसी पॉलिसी</li>
+                <li><i class="fas fa-phone"></i> कॉन्टॅक्ट अस</li>
+            </ul>
+            <button id="subscribe-btn2"><i class="fas fa-crown"></i> सबस्क्रिप्शन घ्या</button>
+            <button id="logout-btn2"><i class="fas fa-sign-out-alt"></i> लॉगऑऊट</button>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav id="bottom-nav">
+            <div class="tab active" data-tab="home"><i class="fas fa-home"></i><span>Home</span></div>
+            <div class="tab" data-tab="your-ride"><i class="fas fa-route"></i><span>Ride</span></div>
+            <div class="tab" data-tab="history"><i class="fas fa-history"></i><span>History</span></div>
+            <div class="tab" data-tab="profile"><i class="fas fa-user"></i><span>Profile</span></div>
+        </nav>
+    </div>
+
+    <script>
+        // === AUTH + SUBSCRIPTION LOGIC ===
+        const authSection = document.getElementById('auth-section');
+        const mainApp = document.getElementById('main-app');
+        const paymentGateway = document.getElementById('payment-gateway');
+        const subscriptionModal = document.getElementById('subscription-modal');
+
+        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        let subscription = JSON.parse(localStorage.getItem('subscription') || '{}');
+
+        // Free Trial Initialize
+        function initializeFreeTrial() {
+            if (!subscription.trialGiven && userData.mobile) {
+                const now = new Date();
+                const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                subscription = { endDate: end.toISOString(), isTrial: true, trialGiven: true };
+                localStorage.setItem('subscription', JSON.stringify(subscription));
+            }
+        }
+
+        // Subscription Active Check
+        function isSubscriptionActive() {
+            if (!subscription.endDate) return false;
+            const now = new Date().getTime();
+            const end = new Date(subscription.endDate).getTime();
+            const active = now <= end;
+            const notif = document.getElementById('notification-icon');
+            if (notif) notif.classList.toggle('hidden', active);
+            return active;
+        }
+
+        // AUTO LOGIN - अगर यूजर पहले से है
+        if (userData.mobile && userData.mobile.length === 10) {
+            authSection.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            updateProfileInfo();
+            initializeFreeTrial();
+            isSubscriptionActive();
+        } else {
+            authSection.classList.remove('hidden');
+            mainApp.classList.add('hidden');
+        }
+
+        // Show Signup
+        document.getElementById('show-signup').onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('signup-form').classList.remove('hidden');
+        };
+
+        // Show Login
+        document.getElementById('show-login').onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+        };
+
+        // SIGN UP
+        document.getElementById('signup-btn').onclick = () => {
+            const name = document.getElementById('signup-name').value.trim();
+            const vehicle = document.getElementById('signup-vehicle').value.trim().toUpperCase();
+            const mobile = document.getElementById('signup-mobile').value.trim();
+
+            if (!name || !vehicle || mobile.length !== 10 || !/^\d+$/.test(mobile)) {
+                alert('कृपया सर्व माहिती योग्य भरा!\n- नाव\n- गाडी नंबर\n- १० अंकांचा मोबाईल');
+                return;
+            }
+
+            userData = { name, vehicle, mobile, profilePic: '' };
+            localStorage.setItem('userData', JSON.stringify(userData));
+
+            const now = new Date();
+            const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            subscription = { endDate: end.toISOString(), isTrial: true, trialGiven: true };
+            localStorage.setItem('subscription', JSON.stringify(subscription));
+
+            alert('साइन अप यशस्वी! १ दिवस फ्री ट्रायल मिळाली.');
+
+            // लॉगिन पेजवर परत
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('login-mobile').value = mobile;
+        };
+
+        // LOGIN
+        document.getElementById('login-btn').onclick = () => {
+            const mobile = document.getElementById('login-mobile').value.trim();
+            const saved = JSON.parse(localStorage.getItem('userData') || '{}');
+
+            if (saved.mobile === mobile) {
+                userData = saved;
+                authSection.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                updateProfileInfo();
+                initializeFreeTrial();
+                isSubscriptionActive();
+            } else {
+                alert('हा मोबाईल नंबर सापडला नाही! कृपया साइन अप करा.');
+            }
+        };
+
+        function updateProfileInfo() {
+            ['profile-name', 'profile-name2'].forEach(id => {
+                document.getElementById(id).textContent = userData.name || 'नाव';
+            });
+            ['profile-vehicle', 'profile-vehicle2'].forEach(id => {
+                document.getElementById(id).textContent = userData.vehicle || 'गाडी नंबर';
+            });
+            const pic = userData.profilePic || 'https://via.placeholder.com/100?text=Profile';
+            ['profile-img', 'profile-img2'].forEach(id => {
+                document.getElementById(id).src = pic;
+            });
+        }
+
+        function handleProfileUpload(inputId, imgId) {
+            document.getElementById(inputId).onchange = function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const base64 = reader.result;
+                        userData.profilePic = base64;
+                        localStorage.setItem('userData', JSON.stringify(userData));
+                        updateProfileInfo();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+        }
+        handleProfileUpload('profile-upload', 'profile-img');
+        handleProfileUpload('profile-upload2', 'profile-img2');
+
+        // Sidebar
+        document.getElementById('menu-icon').onclick = () => {
+            document.getElementById('sidebar').classList.add('active');
+            document.body.classList.add('sidebar-open');
+        };
+        document.getElementById('close-sidebar').onclick = () => {
+            document.getElementById('sidebar').classList.remove('active');
+            document.body.classList.remove('sidebar-open');
+        };
+
+        function openSubscriptionModal() { subscriptionModal.classList.remove('hidden'); }
+        function closeSubscriptionModal() { 
+            subscriptionModal.classList.add('hidden'); 
+            document.querySelectorAll('.plan').forEach(p => p.classList.remove('active'));
+        }
+        function openPayment() { paymentGateway.classList.remove('hidden'); }
+        function closePayment() { paymentGateway.classList.add('hidden'); }
+
+        ['subscribe-btn', 'subscribe-btn2'].forEach(id => {
+            document.getElementById(id).onclick = openSubscriptionModal;
+        });
+
+        document.querySelectorAll('.plan').forEach(plan => {
+            plan.onclick = () => {
+                document.querySelectorAll('.plan').forEach(p => p.classList.remove('active'));
+                plan.classList.add('active');
+                const days = plan.dataset.days;
+                const amount = plan.dataset.amount;
+                openPayment();
+                document.getElementById('pay-btn').onclick = () => {
+                    const now = new Date();
+                    const end = new Date(now.getTime() + parseInt(days) * 24 * 60 * 60 * 1000);
+                    subscription = { endDate: end.toISOString(), isTrial: false, trialGiven: true };
+                    localStorage.setItem('subscription', JSON.stringify(subscription));
+                    closePayment();
+                    closeSubscriptionModal();
+                    showPopup(`₹${amount} चे ${days === '1' ? '1 दिवस' : days === '30' ? '1 महिना' : '1 वर्ष'} सबस्क्रिप्शन यशस्वी!`);
+                };
+            };
+        });
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+        ['logout-btn', 'logout-btn2'].forEach(id => document.getElementById(id).onclick = logout);
+
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.onclick = () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.app-section').forEach(sec => sec.classList.add('hidden'));
+                document.getElementById(tab.dataset.tab + '-section').classList.remove('hidden');
+            };
+        });
+
+        let watchId = null, odometer = 0, filledLiters = 0, price = 0, mileage = 0;
+        let lastPosition = null, lastTime = null, isRunning = false;
+        let positions = [], startTime = null, createRide = false;
+        let map = null, polyline = null;
+        let lastAlertKm = null;
+
+        function formatPetrol(rupees, liters) {
+            return `₹${rupees.toFixed(2)} (${liters.toFixed(2)} L)`;
+        }
+
+        function updateOdometer() {
+            document.getElementById('odometer').textContent = odometer.toFixed(1).padStart(7, '0');
+        }
+
+        function updateResults(speed = 0) {
+            const usedLiters = odometer / mileage;
+            const remainingLiters = Math.max(0, filledLiters - usedLiters);
+            const remainingRupees = remainingLiters * price;
+            const remainingKm = remainingLiters * mileage;
+
+            document.getElementById('filled-petrol').textContent = `टाकलेले: ${formatPetrol(price * filledLiters, filledLiters)}`;
+            document.getElementById('used-petrol').textContent = `वापरलेले: ${formatPetrol(usedLiters * price, usedLiters)}`;
+            document.getElementById('remaining-petrol').innerHTML = `<strong>शिल्लक: ${formatPetrol(remainingRupees, remainingLiters)}</strong>`;
+            document.getElementById('remaining-km').innerHTML = `<strong>अजून: ${remainingKm.toFixed(1)} किमी</strong>`;
+            document.getElementById('current-speed').textContent = `स्पीड: ${speed.toFixed(1)} किमी/तास`;
+            document.getElementById('driven-km').textContent = `गाडी चाललेले: ${odometer.toFixed(1)} किमी`;
+
+            if (remainingKm <= 5 && remainingKm > 0) {
+                const currentKm = Math.floor(odometer);
+                if (lastAlertKm === null || currentKm > lastAlertKm) {
+                    lastAlertKm = currentKm;
+                    const msg = new SpeechSynthesisUtterance('तुमचे पेट्रोल लवकरच संपत आहे, कृपया पेट्रोल भरा');
+                    msg.lang = 'mr-IN';
+                    speechSynthesis.speak(msg);
+                }
+            }
+        }
+
+        function getDistance(p1, p2) {
+            const R = 6371000;
+            const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            const dLon = (p2.lon - p1.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180)*Math.cos(p2.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) / 1000;
+        }
+
+        function startGPSTracking() {
+            if (isRunning) return;
+            isRunning = true;
+            document.getElementById('status').textContent = 'GPS शोधत आहे...';
+            document.getElementById('status').className = 'status running';
+
+            watchId = navigator.geolocation.watchPosition(
+                pos => {
+                    const now = Date.now();
+                    const { latitude: lat, longitude: lon, speed: gpsSpeed } = pos.coords;
+                    let speed = gpsSpeed ? gpsSpeed * 3.6 : 0;
+
+                    if (lastPosition && lastTime) {
+                        const dist = getDistance(lastPosition, {lat, lon});
+                        const timeDiff = (now - lastTime) / 1000;
+                        if (timeDiff > 0 && !gpsSpeed) {
+                            speed = (dist / timeDiff) * 3.6;
+                        }
+                        odometer += dist;
+                    }
+
+                    lastPosition = {lat, lon};
+                    lastTime = now;
+                    positions.push({lat, lon, time: now});
+                    document.getElementById('status').textContent = 'GPS चालू!';
+                    updateOdometer();
+                    updateResults(speed);
+
+                    if (createRide && map) {
+                        const latLng = [lat, lon];
+                        polyline.addLatLng(latLng);
+                        map.setView(latLng, 13);
+                    }
+                },
+                err => {
+                    let msg = '';
+                    if (err.code === 1) msg = 'परवानगी नाकारली! Allow करा.';
+                    else if (err.code === 2) msg = 'GPS सिग्नल नाही...';
+                    else if (err.code === 3) msg = 'टाइमआउट!';
+                    document.getElementById('status').textContent = msg;
+                },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            );
+        }
+
+        function pauseTracking() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            isRunning = false;
+            document.getElementById('status').textContent = 'थांबले';
+            document.getElementById('status').className = 'status stopped';
+        }
+
+        // GPS START BUTTON
+        document.getElementById('setup-btn').onclick = () => {
+            if (!isSubscriptionActive()) {
+                showPopup('तुमची फ्री ट्रायल संपली आहे. कृपया subscription घ्या');
+                openSubscriptionModal();
+                return;
+            }
+
+            price = parseFloat(document.getElementById('price').value) || 0;
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            mileage = parseFloat(document.getElementById('mileage').value) || 1;
+            const initialDriven = parseFloat(document.getElementById('initial_driven').value) || 0;
+
+            if (!price || !amount || !mileage) {
+                alert('सर्व भरा!');
+                return;
+            }
+
+            filledLiters = amount / price;
+            odometer = initialDriven;
+            lastPosition = null;
+            lastTime = null;
+            positions = [];
+            startTime = Date.now();
+            createRide = document.querySelector('[name="createRide"]:checked').value === 'yes';
+
+            // Switch to Ride Tab
+            const rideTab = document.querySelector('[data-tab="your-ride"]');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            rideTab.classList.add('active');
+            document.querySelectorAll('.app-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById('your-ride-section').classList.remove('hidden');
+
+            // Show Running Section
+            document.getElementById('input-section').classList.add('hidden');
+            document.getElementById('running-section').classList.remove('hidden');
+            document.getElementById('stop-btn').style.display = 'block';
+            document.getElementById('resume-btn').style.display = 'none';
+
+            if (createRide) {
+                document.getElementById('map').classList.remove('hidden');
+                setTimeout(() => {
+                    map = L.map('map').setView([0, 0], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+                    polyline = L.polyline([], {color: 'red'}).addTo(map);
+                }, 100);
+            } else {
+                document.getElementById('map').classList.add('hidden');
+            }
+
+            updateOdometer();
+            updateResults();
+            startGPSTracking();
+        };
+
+        document.getElementById('stop-btn').onclick = () => {
+            pauseTracking();
+            showPopup('तुमची Ride थांबवण्यात आली');
+            document.getElementById('stop-btn').style.display = 'none';
+            document.getElementById('resume-btn').style.display = 'block';
+        };
+
+        document.getElementById('resume-btn').onclick = () => {
+            startGPSTracking();
+            showPopup('Ride पुन्हा सुरु झाली');
+            document.getElementById('stop-btn').style.display = 'block';
+            document.getElementById('resume-btn').style.display = 'none';
+        };
+
+        document.getElementById('reset-btn').onclick = () => {
+            pauseTracking();
+            document.getElementById('running-section').classList.add('hidden');
+            document.getElementById('input-section').classList.remove('hidden');
+            document.getElementById('stop-btn').style.display = 'none';
+            document.getElementById('resume-btn').style.display = 'none';
+            if (map) map.remove();
+            map = null;
+        };
+
+        function showPopup(msg) {
+            const popup = document.getElementById('popup');
+            popup.textContent = msg;
+            popup.classList.add('anim');
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none';
+                popup.classList.remove('anim');
+            }, 2000);
+        }
+
+        setTimeout(() => {
+            document.querySelector('.splash').style.display = 'none';
+        }, 2000);
+    </script>
+</body>
+</html>
